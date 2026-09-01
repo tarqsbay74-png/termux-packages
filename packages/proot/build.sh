@@ -17,17 +17,19 @@ TERMUX_PKG_EXTRA_MAKE_ARGS="-C src PROOT_WITH_LIBANDROID_SHMEM=true"
 export PROOT_UNBUNDLE_LOADER=$TERMUX_PREFIX/libexec/proot
 
 termux_step_pre_configure() {
-	LDFLAGS+=" -static"
-	LDFLAGS+=" -ffunction-sections -fdata-sections -Wl,--gc-sections"
-	CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
+        LDFLAGS+=" -static"
+        LDFLAGS+=" -L$TERMUX_PREFIX/lib"
+        LDFLAGS+=" -ffunction-sections -fdata-sections -Wl,--gc-sections"
+        LDFLAGS+=" -Wl,-Bdynamic -llog -Wl,-Bstatic"
+        CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
 }
 
 termux_step_post_make_install() {
-	mkdir -p $TERMUX_PREFIX/share/man/man1
-	install -m600 $TERMUX_PKG_SRCDIR/doc/proot/man.1 $TERMUX_PREFIX/share/man/man1/proot.1
+        mkdir -p $TERMUX_PREFIX/share/man/man1
+        install -m600 $TERMUX_PKG_SRCDIR/doc/proot/man.1 $TERMUX_PREFIX/share/man/man1/proot.1
 
-	sed -e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|g" \
-		$TERMUX_PKG_BUILDER_DIR/termux-chroot \
-		> $TERMUX_PREFIX/bin/termux-chroot
-	chmod 700 $TERMUX_PREFIX/bin/termux-chroot
+        sed -e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|g" \
+                $TERMUX_PKG_BUILDER_DIR/termux-chroot \
+                > $TERMUX_PREFIX/bin/termux-chroot
+        chmod 700 $TERMUX_PREFIX/bin/termux-chroot
 }
