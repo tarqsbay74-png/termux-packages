@@ -8,19 +8,16 @@ TERMUX_PKG_SRCURL=https://github.com/termux/proot/archive/v${TERMUX_PKG_VERSION}
 TERMUX_PKG_SHA256=29385d1ddb619a9c4449ab512bfd55032034b22f724ddf98fc95ff300ea32135
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_UPDATE_TAG_TYPE="newest-tag"
-TERMUX_PKG_DEPENDS="libandroid-shmem, libtalloc, libtalloc-static, libandroid-shmem-static"
+TERMUX_PKG_DEPENDS="libandroid-shmem, libtalloc, libtalloc-static"
 TERMUX_PKG_SUGGESTS="proot-distro"
 TERMUX_PKG_BUILD_IN_SRC=true
-TERMUX_PKG_EXTRA_MAKE_ARGS="-C src PROOT_WITH_LIBANDROID_SHMEM=true"
+TERMUX_PKG_EXTRA_MAKE_ARGS="-C src PROOT_WITH_LIBANDROID_SHMEM=false"
 
 # Install loader in libexec instead of extracting it every time
 export PROOT_UNBUNDLE_LOADER=$TERMUX_PREFIX/libexec/proot
 
 termux_step_pre_configure() {
 	LDFLAGS+=" -static"
-	LDFLAGS+=" -L$TERMUX_PREFIX/lib"
-	LDFLAGS+=" -ffunction-sections -fdata-sections -Wl,--gc-sections"
-	LDFLAGS+=" -Wl,-Bdynamic -llog -Wl,-Bstatic"
 	CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
 }
 
