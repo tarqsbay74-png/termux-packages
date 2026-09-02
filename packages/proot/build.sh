@@ -11,22 +11,50 @@ TERMUX_PKG_UPDATE_TAG_TYPE="newest-tag"
 TERMUX_PKG_DEPENDS="libtalloc, libtalloc-static"
 TERMUX_PKG_SUGGESTS="proot-distro"
 TERMUX_PKG_BUILD_IN_SRC=true
-TERMUX_PKG_EXTRA_MAKE_ARGS="-C src"
+TERMUX_PKG_EXTRA_MAKE_ARGS="-C src PROOT_WITH_LIBANDROID_SHMEM=true"
 
-# Install loader in libexec instead of extracting it every time
 export PROOT_UNBUNDLE_LOADER=$TERMUX_PREFIX/libexec/proot
 
 termux_step_pre_configure() {
-	LDFLAGS+=" -static"
-	CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
+    # بناء libandroid-shmem من المصدر مع تعطيل log
+    local LIBSHMEM_SRC_DIR=$TERMUX_PKG_BUILDDIR/libandroid-shmem
+    mkdir -p $LIBSHMEM_SRC_DIR
+    cd $LIBSHMEM_SRC_DIR
+
+    curl -L -o libandroid-shmem.zip https://github.com/termux/libandroid-shmem/archive/refs/tags/v0.7.zip
+    unzip -q libandroid-shmem.zip
+    cd libandroid-shmem-0.7
+
+    # تعطيل استدعاءات __android_log_print
+    sed -i 's/__android_log_print/\/\/ __android_log_print/g' shmem.c
+    sed -i 's/#define LOG_TAG "libandroid-shmem"/\/\/ #define LOG_TAG "libandroid-shmem"/' shmem.c
+    sed -i '/#include <android\/log.h>/d' shmem.c
+
+    # تجميع المكتبة الثابتة (لـ aarch64)
+    $CC $CFLAGS -c shmem.c -o shmem.o
+    $AR rcs libandroid-shmem.a shmem.o
+
+    mkdir -p $TERMUX_PKG_BUILDDIR/libs
+    cp libandroid-shmem.a $TERMUX_PKG_BUILDDIR/libs/
+
+    cd $TERMUX_PKG_BUILDDIR
+
+    # إعداد LDFLAGS للتجميع الثابت بالكامل (static)
+    LDFLAGS=" -static"
+    LDFLAGS+=" -L$TERMUX_PKG_BUILDDIR/libs -L$TERMUX_PREFIX/lib"
+    LDFLAGS+=" -ltalloc -Wl,-z,noexecstack"
+    LDFLAGS+=" -landroid-shmem"
+    export LDFLAGS
+
+    CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
 }
 
 termux_step_post_make_install() {
-	mkdir -p $TERMUX_PREFIX/share/man/man1
-	install -m600 $TERMUX_PKG_SRCDIR/doc/proot/man.1 $TERMUX_PREFIX/share/man/man1/proot.1
+    mkdir -p $TERMUX_PREFIX/share/man/man1
+    install -m600 $TERMUX_PKG_SRCDIR/doc/proot/man.1 $TERMUX_PREFIX/share/man/man1/proot.1
 
-	sed -e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|g" \
-		$TERMUX_PKG_BUILDER_DIR/termux-chroot \
-		> $TERMUX_PREFIX/bin/termux-chroot
-	chmod 700 $TERMUX_PREFIX/bin/termux-chroot
+    sed -e "s|@TERMUX_PREFIX@|$TERMUX_PREFIX|g" \
+        $TERMUX_PKG_BUILDER_DIR/termux-chroot \
+        > $TERMUX_PREFIX/bin/termux-chroot
+    chmod 700 $TERMUX_PREFIX/bin/termux-chroot
 }
