@@ -39,6 +39,14 @@ termux_step_pre_configure() {
 
 	cd $TERMUX_PKG_BUILDDIR
 
+	# تعطيل System V IPC عن طريق حذف ملفات sysvipc من GNUmakefile
+	cd src
+	sed -i '/extension\/sysvipc\/sysvipc\.o/d' GNUmakefile
+	sed -i '/extension\/sysvipc\/sysvipc_msg\.o/d' GNUmakefile
+	sed -i '/extension\/sysvipc\/sysvipc_sem\.o/d' GNUmakefile
+	sed -i '/extension\/sysvipc\/sysvipc_shm\.o/d' GNUmakefile
+	cd ..
+
 	# إعداد LDFLAGS للتجميع الثابت بالكامل
 	LDFLAGS=" -static"
 	LDFLAGS+=" -L$TERMUX_PKG_BUILDDIR/libs -L$TERMUX_PREFIX/lib"
@@ -46,7 +54,7 @@ termux_step_pre_configure() {
 	LDFLAGS+=" -landroid-shmem"
 	export LDFLAGS
 
-	# تعطيل System V IPC (Android لا يدعمه) ونعتمد على libandroid-shmem
+	# تعطيل System V IPC عبر CPPFLAGS أيضاً (احتياطي)
 	CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
 	CPPFLAGS+=" -DWITHOUT_SYSVIPC"
 }
